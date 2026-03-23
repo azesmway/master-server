@@ -1,0 +1,32 @@
+module.exports = {
+  apps: [
+    {
+      name:         'master-api',
+      script:       '/opt/master/api/dist/main.js',
+      instances:    1,
+      exec_mode:    'fork',
+      watch:        false,
+      max_memory_restart: '1G',
+      env_production: {
+        NODE_ENV:          'development',
+        PORT:              3000,
+        DB_SSL:            'false',
+        DB_HOST:           'localhost',
+        DB_PORT:           5432,
+        DB_USER:           'master_user',
+        DB_PASSWORD:       '',
+        DB_NAME:           'master_db',
+        REDIS_HOST:        'localhost',
+        REDIS_PORT:        6379,
+        REDIS_PASSWORD:    '',
+        JWT_SECRET:        '',
+        DEEPSEEK_API_KEY:  '',
+      },
+      out_file:        '/opt/master/logs/api-out.log',
+      error_file:      '/opt/master/logs/api-err.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      restart_delay:   3000,
+      max_restarts:    10,
+    },
+  ],
+}

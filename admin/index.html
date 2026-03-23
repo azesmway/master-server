@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мастер — Админ панель</title>
+
+  <style>
+      :root {
+          --bg:       #0a0a0f;
+          --surface:  #111118;
+          --border:   #1e1e2e;
+          --accent:   #ff6b35;
+          --accent2:  #7c3aed;
+          --green:    #22c55e;
+          --yellow:   #f59e0b;
+          --red:      #ef4444;
+          --blue:     #3b82f6;
+          --text:     #e8e8f0;
+          --muted:    #666680;
+          --font-ui:  'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { background:var(--bg); color:var(--text); font-family:var(--font-mono); min-height:100vh; }
+
+      /* Layout */
+      .layout { display:flex; min-height:100vh; }
+
+      /* Sidebar */
+      .sidebar {
+          background:var(--surface);
+          border-right:1px solid var(--border);
+          padding:24px 0;
+          position:sticky; top:0;
+          width:240px; height:100vh;
+          display:flex; flex-direction:column;
+          overflow-y:auto;
+          flex-shrink:0;
+      }
+      .logo {
+          padding:0 24px 24px;
+          border-bottom:1px solid var(--border);
+          margin-bottom:16px;
+      }
+      .logo-text {
+          font-family:var(--font-ui);
+          font-size:18px; font-weight:800;
+          color:var(--accent);
+          letter-spacing:-0.5px;
+      }
+      .logo-sub { font-size:10px; color:var(--muted); margin-top:2px; }
+      .nav-section { padding:0 12px; margin-bottom:8px; }
+      .nav-label { font-size:9px; color:var(--muted); letter-spacing:2px; padding:0 12px; margin-bottom:6px; text-transform:uppercase; }
+      .nav-item {
+          display:flex; align-items:center; gap:10px;
+          padding:10px 12px; border-radius:10px;
+          cursor:pointer; font-size:12px; color:var(--muted);
+          transition:all 0.15s; margin-bottom:2px;
+          border:1px solid transparent;
+      }
+      .nav-item:hover { background:#1a1a2a; color:var(--text); }
+      .nav-item.active { background:#ff6b3515; color:var(--accent); border-color:#ff6b3530; }
+      .nav-item .icon { font-size:16px; width:20px; text-align:center; }
+      .badge { margin-left:auto; background:var(--accent); color:#fff; font-size:9px; padding:2px 6px; border-radius:10px; }
+
+      /* Main */
+      .main { flex:1; padding:32px; min-width:0; overflow-x:auto; }
+      .page { display:none; min-width:0; }
+      .page.active { display:block; }
+
+      /* Header */
+      .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; }
+      .page-title { font-family:var(--font-ui); font-size:24px; font-weight:800; }
+      .page-subtitle { color:var(--muted); font-size:11px; margin-top:4px; }
+
+      /* KPI Grid */
+      .kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(180px,1fr)); gap:16px; margin-bottom:32px; }
+      .kpi-card {
+          background:var(--surface); border:1px solid var(--border);
+          border-radius:16px; padding:20px;
+          position:relative; overflow:hidden;
+      }
+      .kpi-card::before {
+          content:''; position:absolute; top:0; right:0;
+          width:60px; height:60px; border-radius:0 16px 0 60px;
+          opacity:0.15;
+      }
+      .kpi-card.orange::before { background:var(--accent); }
+      .kpi-card.purple::before { background:var(--accent2); }
+      .kpi-card.green::before  { background:var(--green); }
+      .kpi-card.blue::before   { background:var(--blue); }
+      .kpi-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+      .kpi-value { font-family:var(--font-ui); font-size:28px; font-weight:800; line-height:1; }
+      .kpi-value.orange { color:var(--accent); }
+      .kpi-value.purple { color:var(--accent2); }
+      .kpi-value.green  { color:var(--green); }
+      .kpi-value.blue   { color:var(--blue); }
+      .kpi-delta { font-size:11px; margin-top:6px; color:var(--muted); }
+      .kpi-delta.up   { color:var(--green); }
+      .kpi-delta.down { color:var(--red); }
+
+      /* Table */
+      .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+      .table-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+      .table-title { font-family:var(--font-ui); font-size:13px; font-weight:600; }
+      table { width:100%; border-collapse:collapse; }
+      th { padding:12px 20px; text-align:left; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); }
+      td { padding:14px 20px; font-size:12px; border-bottom:1px solid var(--border); }
+      tr:last-child td { border-bottom:none; }
+      tr:hover td { background:#ffffff05; }
+
+      /* Badge */
+      .status {
+          display:inline-flex; align-items:center; gap:4px;
+          padding:3px 10px; border-radius:20px; font-size:10px; font-weight:600;
+      }
+      .status.active   { background:#22c55e20; color:var(--green); }
+      .status.pending  { background:#f59e0b20; color:var(--yellow); }
+      .status.rejected { background:#ef444420; color:var(--red); }
+      .status.verified { background:#3b82f620; color:var(--blue); }
+
+      /* Btn */
+      .btn { padding:8px 16px; border-radius:8px; cursor:pointer; font-size:11px; font-family:var(--font-mono); border:none; transition:all 0.15s; }
+      .btn-primary { background:var(--accent); color:#fff; }
+      .btn-primary:hover { background:#e55a25; }
+      .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+      .btn-ghost:hover { color:var(--text); border-color:var(--muted); }
+      .btn-sm { padding:5px 10px; font-size:10px; }
+      .btn-green { background:#22c55e20; color:var(--green); border:1px solid #22c55e40; }
+      .btn-green:hover { background:#22c55e30; }
+      .btn-red { background:#ef444420; color:var(--red); border:1px solid #ef444440; }
+      .btn-red:hover { background:#ef444430; }
+
+      /* Stats Row */
+      .stats-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; min-width:0; }
+
+      /* Chart placeholder */
+      .chart-area {
+          background:var(--surface); border:1px solid var(--border);
+          border-radius:16px; padding:24px;
+      }
+      .chart-bars { display:flex; align-items:flex-end; gap:4px; height:120px; margin-top:16px; }
+      .chart-bar { flex:1; border-radius:4px 4px 0 0; min-width:8px; transition:opacity 0.2s; cursor:pointer; }
+      .chart-bar:hover { opacity:0.7; }
+
+      /* Loading */
+      .loader { display:flex; gap:4px; align-items:center; }
+      .loader span { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.2s ease-in-out infinite; }
+      .loader span:nth-child(2) { animation-delay:0.2s; }
+      .loader span:nth-child(3) { animation-delay:0.4s; }
+      @keyframes pulse { 0%,80%,100%{opacity:0.3} 40%{opacity:1} }
+
+      /* Auth */
+      .auth-wrap { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+      .auth-card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:48px; width:400px; }
+      .auth-logo { font-family:var(--font-ui); font-size:28px; font-weight:800; color:var(--accent); text-align:center; margin-bottom:8px; }
+      .auth-sub { text-align:center; color:var(--muted); font-size:12px; margin-bottom:32px; }
+      .form-group { margin-bottom:16px; }
+      .form-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; display:block; }
+      .form-input {
+          width:100%; background:#0d0d18; border:1px solid var(--border);
+          border-radius:10px; padding:12px 16px; color:var(--text);
+          font-family:var(--font-mono); font-size:13px; outline:none;
+          transition:border 0.15s;
+      }
+      .form-input:focus { border-color:var(--accent); }
+      .form-btn { width:100%; padding:14px; margin-top:8px; font-size:13px; font-family:var(--font-ui); font-weight:600; }
+
+      /* Modal */
+      .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:100; }
+      .modal-overlay.open { display:flex; }
+      .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:32px; width:480px; max-width:90vw; }
+      .modal-title { font-family:var(--font-ui); font-size:16px; font-weight:700; margin-bottom:20px; }
+      .modal-actions { display:flex; gap:10px; margin-top:24px; justify-content:flex-end; }
+      .textarea { resize:vertical; min-height:80px; }
+
+      /* Toast */
+      .toast { position:fixed; bottom:24px; right:24px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 20px; font-size:12px; transform:translateY(100px); opacity:0; transition:all 0.3s; z-index:200; }
+      .toast.show { transform:translateY(0); opacity:1; }
+      .toast.success { border-color:var(--green); color:var(--green); }
+      .toast.error   { border-color:var(--red);   color:var(--red); }
+
+      /* User avatar */
+      .avatar { width:32px; height:32px; border-radius:50%; background:#ff6b3530; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:var(--accent); font-weight:700; }
+
+      /* Empty state */
+      .empty { text-align:center; padding:48px; color:var(--muted); }
+      .empty-icon { font-size:48px; margin-bottom:12px; }
+
+      /* Sidebar footer */
+      .sidebar-footer { margin-top:auto; padding:16px 24px; border-top:1px solid var(--border); font-size:10px; color:var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- Auth Screen -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">⚡ МАСТЕР</div>
+      <div class="auth-sub">Панель администратора</div>
+      <div class="form-group">
+        <label class="form-label">Телефон</label>
+        <input class="form-input" id="auth-phone" type="tel" placeholder="+7 000 000 0000" value="">
+      </div>
+      <div class="form-group" id="otp-group" style="display:none">
+        <label class="form-label">Код из SMS</label>
+        <input class="form-input" id="auth-otp" type="text" placeholder="000000" maxlength="6">
+      </div>
+      <div id="auth-error" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
+      <button class="btn btn-primary form-btn" id="auth-btn" onclick="handleAuth()">
+        Получить код
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Layout -->
+<div id="admin-layout" style="display:none">
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-text">⚡ МАСТЕР</div>
+        <div class="logo-sub">Admin Dashboard v1.0</div>
+      </div>
+
+      <div class="nav-label">Главное</div>
+      <div class="nav-section">
+        <div class="nav-item active" onclick="showPage('dashboard')">
+          <span class="icon">📊</span> Дашборд
+        </div>
+      </div>
+
+      <div class="nav-label">Пользователи</div>
+      <div class="nav-section">
+        <div class="nav-item" onclick="showPage('users')">
+          <span class="icon">👥</span> Все пользователи
+        </div>
+        <div class="nav-item" onclick="showPage('specialists')">
+          <span class="icon">🔧</span> Специалисты
+        </div>
+        <div class="nav-item" onclick="showPage('verification')" id="nav-verification">
+          <span class="icon">🔐</span> Верификация
+          <span class="badge" id="ver-badge" style="display:none">0</span>
+        </div>
+      </div>
+
+      <div class="nav-label">Контент</div>
+      <div class="nav-section">
+        <div class="nav-item" onclick="showPage('orders')">
+          <span class="icon">📋</span> Заказы
+        </div>
+        <div class="nav-item" onclick="showPage('reviews')">
+          <span class="icon">⭐</span> Отзывы
+        </div>
+      </div>
+
+      <div class="nav-label">Система</div>
+      <div class="nav-section">
+        <div class="nav-item" onclick="showPage('analytics')">
+          <span class="icon">📈</span> Аналитика
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div id="admin-name">Загрузка...</div>
+        <div style="margin-top:4px">
+          <span onclick="logout()" style="cursor:pointer;color:var(--red)">Выйти</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- Dashboard -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Дашборд</div>
+            <div class="page-subtitle" id="dash-date">Загрузка...</div>
+          </div>
+          <button class="btn btn-primary" onclick="loadDashboard()">⟳ Обновить</button>
+        </div>
+
+        <div class="kpi-grid" id="kpi-grid">
+          <div class="kpi-card orange"><div class="loader"><span></span><span></span><span></span></div></div>
+          <div class="kpi-card purple"><div class="loader"><span></span><span></span><span></span></div></div>
+          <div class="kpi-card green"><div class="loader"><span></span><span></span><span></span></div></div>
+          <div class="kpi-card blue"><div class="loader"><span></span><span></span><span></span></div></div>
+        </div>
+
+        <div class="stats-row">
+          <div class="chart-area" id="events-chart">
+            <div style="font-family:var(--font-ui);font-size:13px;font-weight:600">События по дням</div>
+            <div class="chart-bars" id="chart-bars">
+              <div class="loader" style="margin:auto"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <div class="table-head"><div class="table-title">Топ событий</div></div>
+            <table><tbody id="top-events"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div class="page" id="page-users">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Пользователи</div>
+            <div class="page-subtitle">Все зарегистрированные пользователи</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input class="form-input" style="width:200px;padding:8px 12px" placeholder="Поиск..." oninput="filterUsers(this.value)">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Пользователь</th><th>Телефон</th><th>Роль</th>
+              <th>Статус</th><th>Дата</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="users-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Specialists -->
+      <div class="page" id="page-specialists">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Специалисты</div>
+            <div class="page-subtitle">Управление профилями специалистов</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Специалист</th><th>Категория</th><th>Рейтинг</th>
+              <th>Заказов</th><th>Верификация</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="specialists-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Verification -->
+      <div class="page" id="page-verification">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Верификация</div>
+            <div class="page-subtitle">Заявки на проверку документов</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="loadVerification('pending')">Ожидают</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadVerification('approved')">Одобрены</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadVerification('rejected')">Отклонены</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Специалист</th><th>Документы</th><th>Статус</th>
+              <th>Дата</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="verification-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Orders -->
+      <div class="page" id="page-orders">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Заказы</div>
+            <div class="page-subtitle">Все заказы на платформе</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Заказ</th><th>Клиент</th><th>Категория</th>
+              <th>Бюджет</th><th>Статус</th><th>Дата</th>
+            </tr></thead>
+            <tbody id="orders-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Reviews -->
+      <div class="page" id="page-reviews">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Отзывы</div>
+            <div class="page-subtitle">Управление отзывами пользователей</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="loadReviews()">⟳ Обновить</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Автор</th><th>Специалист</th><th>Оценка</th>
+              <th>Текст</th><th>Верифицирован</th><th>Дата</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="reviews-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Analytics -->
+      <div class="page" id="page-analytics">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Аналитика</div>
+            <div class="page-subtitle">Детальная статистика платформы</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="loadAnalytics(7)">7 дней</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadAnalytics(30)">30 дней</button>
+          </div>
+        </div>
+        <div class="kpi-grid" id="analytics-kpi"></div>
+        <div class="table-wrap" style="margin-top:16px">
+          <div class="table-head"><div class="table-title">DAU по дням</div></div>
+          <table><thead><tr><th>Дата</th><th>Активных пользователей</th></tr></thead>
+            <tbody id="dau-table"></tbody></table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Verification Modal -->
+<div class="modal-overlay" id="ver-modal">
+  <div class="modal">
+    <div class="modal-title" id="ver-modal-title">Рассмотреть заявку</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px" id="ver-modal-info"></div>
+    <div class="form-group">
+      <label class="form-label">Комментарий (необязательно)</label>
+      <textarea class="form-input textarea" id="ver-comment" placeholder="Причина отклонения или дополнительная информация..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('ver-modal')">Отмена</button>
+      <button class="btn btn-red" onclick="reviewVerification(false)">✗ Отклонить</button>
+      <button class="btn btn-green" onclick="reviewVerification(true)">✓ Одобрить</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = 'https://api.it-trend.dev/v1'
+  let TOKEN = localStorage.getItem('admin_token') || ''
+  let currentVerificationId = null
+
+  // ── Auth ──────────────────────────────────────────────────────────────────────
+
+  let otpSent = false
+
+  async function handleAuth() {
+    const phone = document.getElementById('auth-phone').value
+    const btn   = document.getElementById('auth-btn')
+
+    if (!otpSent) {
+      btn.textContent = 'Отправляем...'
+      try {
+        await fetch(`${API}/auth/otp/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone })
+        })
+        otpSent = true
+        document.getElementById('otp-group').style.display = 'block'
+        btn.textContent = 'Войти'
+        document.getElementById('auth-otp').focus()
+      } catch(e) {
+        showError('Ошибка отправки кода')
+        btn.textContent = 'Получить код'
+      }
+      return
+    }
+
+    const code = document.getElementById('auth-otp').value
+    btn.textContent = 'Входим...'
+    try {
+      const r = await fetch(`${API}/auth/otp/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code })
+      })
+      const data = await r.json()
+      if (data.accessToken) {
+        TOKEN = data.accessToken
+        localStorage.setItem('admin_token', TOKEN)
+        initAdmin(data.user)
+      } else {
+        // Новый пользователь — нужна регистрация
+        showError('Пользователь не найден')
+        btn.textContent = 'Войти'
+      }
+    } catch(e) {
+      showError('Неверный код')
+      btn.textContent = 'Войти'
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('auth-error')
+    el.textContent = msg
+    el.style.display = 'block'
+  }
+
+  function initAdmin(user) {
+    document.getElementById('auth-screen').style.display = 'none'
+    document.getElementById('admin-layout').style.display = 'block'
+    document.getElementById('admin-name').textContent = user?.name ?? 'Администратор'
+    loadDashboard()
+    loadVerificationBadge()
+  }
+
+  function logout() {
+    localStorage.removeItem('admin_token')
+    TOKEN = ''
+    location.reload()
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────────
+
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+    document.getElementById(`page-${name}`)?.classList.add('active')
+    event.currentTarget?.classList.add('active')
+
+    const loaders = {
+      users:        loadUsers,
+      specialists:  loadSpecialists,
+      verification: () => loadVerification('pending'),
+      orders:       loadOrders,
+      reviews:      loadReviews,
+      analytics:    () => loadAnalytics(7),
+    }
+    loaders[name]?.()
+  }
+
+  // ── API helper ────────────────────────────────────────────────────────────────
+
+  async function api(path, options = {}) {
+    const r = await fetch(`${API}${path}`, {
+      ...options,
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...options.headers }
+    })
+    if (!r.ok) throw new Error(`${r.status}`)
+    return r.json()
+  }
+
+  // ── Dashboard ─────────────────────────────────────────────────────────────────
+
+  async function loadDashboard() {
+    document.getElementById('dash-date').textContent =
+      new Date().toLocaleDateString('ru', { weekday:'long', day:'numeric', month:'long' })
+
+    try {
+      const analytics = await api('/analytics/dashboard?days=7')
+      const specs     = await api('/specialists?page=1&limit=1')
+
+      renderKPI(analytics, specs)
+      renderChart(analytics.dailyActive)
+      renderTopEvents(analytics.topEvents)
+    } catch(e) {
+      console.error(e)
+    }
+  }
+
+  function renderKPI(analytics, specs) {
+    document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card orange">
+      <div class="kpi-label">Активных пользователей</div>
+      <div class="kpi-value orange">${analytics.uniqueUsers}</div>
+      <div class="kpi-delta up">за 7 дней</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Регистраций</div>
+      <div class="kpi-value purple">${analytics.registrations}</div>
+      <div class="kpi-delta up">за 7 дней</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Создано заказов</div>
+      <div class="kpi-value green">${analytics.ordersCreated}</div>
+      <div class="kpi-delta up">за 7 дней</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Открыто чатов</div>
+      <div class="kpi-value blue">${analytics.chatsOpened}</div>
+      <div class="kpi-delta up">за 7 дней</div>
+    </div>
+  `
+  }
+
+  function renderChart(data) {
+    if (!data?.length) return
+    const max  = Math.max(...data.map(d => parseInt(d.dau)), 1)
+    const colors = ['#ff6b35','#7c3aed','#22c55e','#3b82f6','#f59e0b']
+    document.getElementById('chart-bars').innerHTML = data.map((d, i) => `
+    <div class="chart-bar"
+      style="height:${Math.max((parseInt(d.dau)/max)*100, 5)}%;background:${colors[i%colors.length]}40;border-top:2px solid ${colors[i%colors.length]}"
+      title="${d.date}: ${d.dau} пользователей"
+    ></div>
+  `).join('')
+  }
+
+  function renderTopEvents(events) {
+    document.getElementById('top-events').innerHTML = events?.map(e => `
+    <tr>
+      <td style="font-family:var(--font-mono)">${e.event}</td>
+      <td style="color:var(--accent);font-weight:700">${e.count}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="2" class="empty">Нет данных</td></tr>'
+  }
+
+  // ── Users ─────────────────────────────────────────────────────────────────────
+
+  let allUsers = []
+
+  async function loadUsers() {
+    document.getElementById('users-table').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px"><div class="loader" style="justify-content:center"><span></span><span></span><span></span></div></td></tr>'
+    try {
+      const data = await api('/users?page=1&limit=50')
+      allUsers = data.data ?? []
+      renderUsers(allUsers)
+    } catch(e) {
+      document.getElementById('users-table').innerHTML = '<tr><td colspan="6" class="empty">Ошибка загрузки</td></tr>'
+    }
+  }
+
+  function renderUsers(users) {
+    document.getElementById('users-table').innerHTML = users.map(u => `
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="avatar">${(u.name?.[0]??'?').toUpperCase()}</div>
+          <div>
+            <div style="font-weight:600">${u.name ?? '—'}</div>
+            <div style="color:var(--muted);font-size:10px">${u.city ?? ''}</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--muted)">${u.phone}</td>
+      <td><span class="status ${u.role === 'specialist' ? 'verified' : 'active'}">${u.role}</span></td>
+      <td><span class="status ${u.isActive ? 'active' : 'rejected'}">${u.isActive ? 'активен' : 'заблокирован'}</span></td>
+      <td style="color:var(--muted)">${new Date(u.createdAt).toLocaleDateString('ru')}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="viewUser('${u.id}')">Детали</button>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="empty">Нет пользователей</td></tr>'
+  }
+
+  function filterUsers(q) {
+    const filtered = allUsers.filter(u =>
+      (u.name ?? '').toLowerCase().includes(q.toLowerCase()) ||
+      (u.phone ?? '').includes(q)
+    )
+    renderUsers(filtered)
+  }
+
+  // ── Specialists ───────────────────────────────────────────────────────────────
+
+  async function loadSpecialists() {
+    document.getElementById('specialists-table').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px"><div class="loader" style="justify-content:center"><span></span><span></span><span></span></div></td></tr>'
+    try {
+      const data = await api('/specialists?page=1&limit=50')
+      const specs = data.data ?? []
+      document.getElementById('specialists-table').innerHTML = specs.map(s => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar">${(s.user?.name?.[0]??'?').toUpperCase()}</div>
+            <div>
+              <div style="font-weight:600">${s.user?.name ?? '—'}</div>
+              <div style="color:var(--muted);font-size:10px">${s.city ?? ''}</div>
+            </div>
+          </div>
+        </td>
+        <td style="color:var(--muted)">${s.categoryIds ?? '—'}</td>
+        <td style="color:var(--yellow)">★ ${Number(s.rating??0).toFixed(1)}</td>
+        <td>${s.completedOrders ?? 0}</td>
+        <td>
+          <span class="status ${s.isVerified ? 'verified' : 'pending'}">
+            ${s.isVerified ? '✓ верифицирован' : 'не проверен'}
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="window.open('/specialist/${s.id}')">Профиль</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" class="empty">Нет специалистов</td></tr>'
+    } catch(e) {
+      document.getElementById('specialists-table').innerHTML = '<tr><td colspan="6" class="empty">Ошибка загрузки</td></tr>'
+    }
+  }
+
+  // ── Verification ──────────────────────────────────────────────────────────────
+
+  async function loadVerificationBadge() {
+    try {
+      const data = await api('/verification/admin/list?status=pending')
+      const count = data?.length ?? 0
+      const badge = document.getElementById('ver-badge')
+      if (count > 0) { badge.textContent = count; badge.style.display = '' }
+      else badge.style.display = 'none'
+    } catch {}
+  }
+
+  async function loadVerification(status = 'pending') {
+    document.getElementById('verification-table').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px"><div class="loader" style="justify-content:center"><span></span><span></span><span></span></div></td></tr>'
+    try {
+      const data = await api(`/verification/admin/list?status=${status}`)
+      document.getElementById('verification-table').innerHTML = (data ?? []).map(v => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar">${(v.specialist?.userId?.[0]??'?').toUpperCase()}</div>
+            <div style="color:var(--muted);font-size:10px">${v.specialistId?.slice(0,8)}...</div>
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${(v.documents??[]).map((d,i) => `<a href="${d}" target="_blank" class="btn btn-ghost btn-sm">📎 Doc ${i+1}</a>`).join('')}
+          </div>
+        </td>
+        <td><span class="status ${v.status}">${v.status}</span></td>
+        <td style="color:var(--muted)">${new Date(v.createdAt).toLocaleDateString('ru')}</td>
+        <td>
+          ${v.status === 'pending' ? `
+            <button class="btn btn-green btn-sm" onclick="openVerModal('${v.id}','${v.specialistId}')">Рассмотреть</button>
+          ` : `<span style="color:var(--muted);font-size:11px">${v.comment ?? '—'}</span>`}
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="empty">Нет заявок</td></tr>'
+    } catch(e) {
+      document.getElementById('verification-table').innerHTML = '<tr><td colspan="5" class="empty">Ошибка загрузки</td></tr>'
+    }
+  }
+
+  function openVerModal(id, specId) {
+    currentVerificationId = id
+    document.getElementById('ver-modal-info').textContent = `Specialist ID: ${specId}`
+    document.getElementById('ver-comment').value = ''
+    document.getElementById('ver-modal').classList.add('open')
+  }
+
+  async function reviewVerification(approved) {
+    if (!currentVerificationId) return
+    const comment = document.getElementById('ver-comment').value
+    try {
+      await api(`/verification/admin/${currentVerificationId}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ approved, comment })
+      })
+      closeModal('ver-modal')
+      showToast(approved ? '✓ Верификация одобрена' : '✗ Верификация отклонена', approved ? 'success' : 'error')
+      loadVerification('pending')
+      loadVerificationBadge()
+    } catch(e) {
+      showToast('Ошибка: ' + e.message, 'error')
+    }
+  }
+
+  // ── Orders ────────────────────────────────────────────────────────────────────
+
+  async function loadOrders() {
+    document.getElementById('orders-table').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px"><div class="loader" style="justify-content:center"><span></span><span></span><span></span></div></td></tr>'
+    try {
+      const data = await api('/orders?page=1&limit=50')
+      const orders = data.data ?? []
+      const colors = { published:'active', in_progress:'pending', completed:'verified', cancelled:'rejected' }
+      document.getElementById('orders-table').innerHTML = orders.map(o => `
+      <tr>
+        <td>
+          <div style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.title}</div>
+          <div style="color:var(--muted);font-size:10px">${o.id.slice(0,8)}...</div>
+        </td>
+        <td style="color:var(--muted)">${o.client?.name ?? o.clientId?.slice(0,8)}</td>
+        <td style="color:var(--muted)">${o.categoryId ?? '—'}</td>
+        <td style="color:var(--accent)">${o.budgetFrom ? Number(o.budgetFrom).toLocaleString()+' ₸' : '—'}</td>
+        <td><span class="status ${colors[o.status]??'active'}">${o.status}</span></td>
+        <td style="color:var(--muted)">${new Date(o.createdAt).toLocaleDateString('ru')}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" class="empty">Нет заказов</td></tr>'
+    } catch(e) {
+      document.getElementById('orders-table').innerHTML = '<tr><td colspan="6" class="empty">Ошибка загрузки</td></tr>'
+    }
+  }
+
+  // ── Reviews ──────────────────────────────────────────────────────────────────
+
+  async function loadReviews() {
+    document.getElementById('reviews-table').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px"><div class="loader" style="justify-content:center"><span></span><span></span><span></span></div></td></tr>'
+    try {
+      const data = await api('/reviews?page=1&limit=50')
+      const reviews = data.data ?? data ?? []
+      document.getElementById('reviews-table').innerHTML = reviews.map(r => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="avatar">${(r.author?.name?.[0]??'?').toUpperCase()}</div>
+            <span style="font-size:12px">${r.author?.name ?? r.authorId?.slice(0,8)}</span>
+          </div>
+        </td>
+        <td style="color:var(--muted);font-size:12px">${r.specialist?.user?.name ?? r.specialistId?.slice(0,8)}</td>
+        <td>
+          <span style="color:var(--yellow);font-weight:700">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+          <span style="color:var(--muted);font-size:11px;margin-left:4px">${r.rating}/5</span>
+        </td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted)" title="${r.text ?? ''}">${r.text ?? '—'}</td>
+        <td>
+          <span class="status ${r.isVerified ? 'verified' : 'pending'}">
+            ${r.isVerified ? '✓ да' : 'нет'}
+          </span>
+        </td>
+        <td style="color:var(--muted);font-size:12px">${new Date(r.createdAt).toLocaleDateString('ru')}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            ${!r.isVerified ? `<button class="btn btn-green btn-sm" onclick="verifyReview('${r.id}')">✓</button>` : ''}
+            <button class="btn btn-red btn-sm" onclick="deleteReview('${r.id}')">✕</button>
+          </div>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" class="empty">Нет отзывов</td></tr>'
+    } catch(e) {
+      document.getElementById('reviews-table').innerHTML = `<tr><td colspan="7" class="empty">Ошибка: ${e.message}</td></tr>`
+    }
+  }
+
+  async function verifyReview(id) {
+    try {
+      await api(`/reviews/${id}/verify`, { method: 'PATCH' })
+      showToast('✓ Отзыв верифицирован', 'success')
+      loadReviews()
+    } catch(e) { showToast('Ошибка: ' + e.message, 'error') }
+  }
+
+  async function deleteReview(id) {
+    if (!confirm('Удалить отзыв?')) return
+    try {
+      await api(`/reviews/${id}`, { method: 'DELETE' })
+      showToast('Отзыв удалён', 'success')
+      loadReviews()
+    } catch(e) { showToast('Ошибка: ' + e.message, 'error') }
+  }
+
+  // ── Analytics ─────────────────────────────────────────────────────────────────
+
+  async function loadAnalytics(days = 7) {
+    try {
+      const data = await api(`/analytics/dashboard?days=${days}`)
+
+      document.getElementById('analytics-kpi').innerHTML = `
+      <div class="kpi-card orange"><div class="kpi-label">Всего событий</div><div class="kpi-value orange">${data.totalEvents}</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Уникальных пользователей</div><div class="kpi-value purple">${data.uniqueUsers}</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Регистраций</div><div class="kpi-value green">${data.registrations}</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Заказов создано</div><div class="kpi-value blue">${data.ordersCreated}</div></div>
+    `
+
+      document.getElementById('dau-table').innerHTML = (data.dailyActive ?? []).map(d => `
+      <tr>
+        <td>${d.date}</td>
+        <td style="color:var(--accent);font-weight:700">${d.dau}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="2" class="empty">Нет данных</td></tr>'
+    } catch(e) {}
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+
+  function closeModal(id) { document.getElementById(id).classList.remove('open') }
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast')
+    t.textContent = msg
+    t.className = `toast ${type} show`
+    setTimeout(() => t.classList.remove('show'), 3000)
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────────
+
+  if (TOKEN) {
+    // Уже залогинен — проверяем токен
+    fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${TOKEN}` } })
+      .then(r => r.json())
+      .then(user => {
+        if (user.id) initAdmin(user)
+        else { localStorage.removeItem('admin_token'); TOKEN = '' }
+      })
+      .catch(() => { localStorage.removeItem('admin_token'); TOKEN = '' })
+  }
+
+  document.getElementById('auth-otp')?.addEventListener('keypress', e => {
+    if (e.key === 'Enter') handleAuth()
+  })
+</script>
+</body>
+</html>

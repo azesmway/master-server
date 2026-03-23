@@ -1,0 +1,36 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: master-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: master_db
+      POSTGRES_USER: master_user
+      POSTGRES_PASSWORD: xeZnCgFg4WzNDYDxL4sz
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - /opt/master/postgres-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U master_user -d master_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: master-redis
+    restart: always
+    command: redis-server --requirepass ugAB1A58lMW5v7XcbENu --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - /opt/master/redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "ugAB1A58lMW5v7XcbENu", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
