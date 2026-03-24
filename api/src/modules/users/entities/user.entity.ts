@@ -49,6 +49,9 @@ export class User {
   @Column({ nullable: true })
   pushToken: string;
 
+  @Column({ nullable: true, unique: true })
+  referralCode: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

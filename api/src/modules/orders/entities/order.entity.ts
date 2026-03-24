@@ -62,6 +62,12 @@ export class Order {
   @Column({ nullable: true })
   address: string;
 
+  @Column({ nullable: true, type: 'decimal', precision: 9, scale: 6 })
+  lat: number;
+
+  @Column({ nullable: true, type: 'decimal', precision: 9, scale: 6 })
+  lng: number;
+
   @Column('simple-array', { nullable: true })
   photos: string[];
 

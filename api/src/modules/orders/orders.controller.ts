@@ -52,6 +52,21 @@ export class OrdersController {
     );
   }
 
+  @Get('nearby')
+  @ApiOperation({ summary: 'Заказы рядом с координатами' })
+  @ApiQuery({ name: 'lat',    required: true })
+  @ApiQuery({ name: 'lng',    required: true })
+  @ApiQuery({ name: 'radius', required: false })
+  @ApiQuery({ name: 'limit',  required: false })
+  findNearby(@Query() query: any) {
+    return this.ordersService.findNearby(
+      parseFloat(query.lat),
+      parseFloat(query.lng),
+      parseFloat(query.radius ?? '10'),
+      parseInt(query.limit   ?? '5', 10),
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Детали заказа' })
   findOne(@Param('id') id: string) {

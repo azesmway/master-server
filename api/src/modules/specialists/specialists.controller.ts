@@ -68,6 +68,19 @@ export class SpecialistsController {
     return this.specialistsService.update(specialist.id, body);
   }
 
+  @Patch('me/location')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Обновить геолокацию специалиста' })
+  async updateLocation(@Req() req: any, @Body() body: { lat: number; lng: number }) {
+    const specialist = await this.specialistsService.findByUserId(req.user.id);
+    if (!specialist) return;
+    return this.specialistsService.update(specialist.id, {
+      lat: body.lat,
+      lng: body.lng,
+    });
+  }
+
   @Post('me/portfolio')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

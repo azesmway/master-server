@@ -262,4 +262,35 @@ export class OrdersService {
     const data = responses.map((r) => ({ ...r, order: orderMap[r.orderId] }));
     return { data };
   }
+
+  // ── Nearby orders (для геолокации специалиста) ─────────────
+
+  async findNearby(lat: number, lng: number, radiusKm = 10, limit = 5) {
+    const orders = await this.orderRepo.query(`
+      SELECT o.*,
+        (6371 * acos(
+          cos(radians($1)) * cos(radians(CAST(o.lat AS float))) *
+          cos(radians(CAST(o.lng AS float)) - radians($2)) +
+          sin(radians($1)) * sin(radians(CAST(o.lat AS float)))
+        )) AS distance_km
+      FROM orders o
+      WHERE o.status = 'published'
+        AND o.lat IS NOT NULL
+        AND o.lng IS NOT NULL
+        AND (6371 * acos(
+          cos(radians($1)) * cos(radians(CAST(o.lat AS float))) *
+          cos(radians(CAST(o.lng AS float)) - radians($2)) +
+          sin(radians($1)) * sin(radians(CAST(o.lat AS float)))
+        )) < $3
+      ORDER BY distance_km ASC
+      LIMIT $4
+    `, [lat, lng, radiusKm, limit]);
+
+    return {
+      data: orders.map((o: any) => ({
+        ...o,
+        distanceKm: parseFloat(o.distance_km),
+      })),
+    };
+  }
 }

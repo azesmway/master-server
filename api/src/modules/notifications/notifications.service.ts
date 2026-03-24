@@ -82,6 +82,20 @@ export class NotificationsService {
     );
   }
 
+  async sendNearbyOrder(
+    specialistUserId: string,
+    orderTitle:       string,
+    orderId:          string,
+    distanceKm:       number,
+  ): Promise<void> {
+    await this.sendToUser(
+      specialistUserId,
+      '📍 Новый заказ рядом с вами',
+      `${orderTitle} · ${distanceKm.toFixed(1)} км от вас`,
+      { type: 'nearby_order', orderId },
+    );
+  }
+
   // ── Низкоуровневая отправка ───────────────────────────────
 
   private async sendPush(messages: ExpoPushMessage[]): Promise<void> {

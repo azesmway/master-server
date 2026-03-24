@@ -20,6 +20,7 @@ import { AnalyticsModule }     from './modules/analytics/analytics.module';
 import { VerificationModule }  from './modules/verification/verification.module';
 import { EarningsModule }       from './modules/earnings/earnings.module';
 import { PaymentsModule }      from './modules/payments/payments.module';
+import { PromoModule }  from './modules/promo/promo.module';
 
 // Entities
 import { User }                        from './modules/users/entities/user.entity';
@@ -31,6 +32,7 @@ import { AnalyticsEvent }              from './modules/analytics/entities/analyt
 import { Verification }                from './modules/verification/verification.entity';
 import { Earning }                     from './modules/earnings/earnings.entity';
 import { Payment }                    from './modules/payments/payment.entity';
+import { PromoCode, PromoUsage, Referral } from './modules/promo/promo.entity';
 
 // Controllers
 import { AppController } from './app.controller';
@@ -55,7 +57,7 @@ import { AppService }    from './app.service';
         database:    config.get('database.name'),
         username:    config.get('database.user'),
         password:    config.get('database.password'),
-        entities:    [User, Specialist, PortfolioItem, ChatRoom, Message, Order, OrderResponse, Review, AnalyticsEvent, Verification, Earning, Payment],
+        entities:    [User, Specialist, PortfolioItem, ChatRoom, Message, Order, OrderResponse, Review, AnalyticsEvent, Verification, Earning, Payment, PromoCode, PromoUsage, Referral],
         synchronize: config.get('app.isDev'),  // только в dev!
         logging:     config.get('app.isDev'),
         ssl:         config.get('app.env') === 'production'
@@ -108,6 +110,7 @@ import { AppService }    from './app.service';
     VerificationModule,
     EarningsModule,
     PaymentsModule,
+    PromoModule,
   ],
   controllers: [AppController],
   providers:   [AppService],
