@@ -1,5 +1,6 @@
-import { IsEnum, IsNumber, IsOptional, IsString, Length, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Length, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { OrderType } from '../entities/order.entity';
 
 export class CreateOrderDto {
   @ApiProperty({ example: 'Починить кран на кухне' })
@@ -55,6 +56,41 @@ export class CreateOrderDto {
   @ApiProperty({ required: false })
   @IsOptional()
   deadline?: Date;
+
+  // ── Partner fields ────────────────────────────────────────
+
+  @ApiProperty({ required: false, enum: OrderType, default: OrderType.STANDARD })
+  @IsOptional()
+  @IsEnum(OrderType)
+  type?: OrderType;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  partnerId?: string;
+
+  @ApiProperty({ required: false, example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  partnerCommissionPercent?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  partnerClientName?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  partnerClientPhone?: string;
+
+  // ── Barter fields ─────────────────────────────────────────
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  barterClientOffer?: string;
 }
 
 export class CreateResponseDto {
@@ -72,4 +108,16 @@ export class CreateResponseDto {
   @IsOptional()
   @IsString()
   currency?: string;
+}
+
+export class UpdateBarterResponseDto {
+  @ApiProperty()
+  @IsString()
+  @Length(5, 1000)
+  barterSpecialistWant: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @Min(0)
+  barterPlatformFee: number;
 }

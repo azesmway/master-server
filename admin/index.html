@@ -257,6 +257,19 @@
         </div>
       </div>
 
+      <div class="nav-label">Партнёры</div>
+      <div class="nav-section">
+        <div class="nav-item" onclick="showPage('partners')">
+          <span class="icon">🤝</span> Партнёры
+        </div>
+        <div class="nav-item" onclick="showPage('partner-orders')">
+          <span class="icon">📦</span> Партнёрские заказы
+        </div>
+        <div class="nav-item" onclick="showPage('barter')">
+          <span class="icon">🔄</span> Бартер
+        </div>
+      </div>
+
       <div class="nav-label">Система</div>
       <div class="nav-section">
         <div class="nav-item" onclick="showPage('analytics')">
@@ -429,6 +442,69 @@
           <div class="table-head"><div class="table-title">DAU по дням</div></div>
           <table><thead><tr><th>Дата</th><th>Активных пользователей</th></tr></thead>
             <tbody id="dau-table"></tbody></table>
+        </div>
+      </div>
+
+      <!-- Partners -->
+      <div class="page" id="page-partners">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Партнёры</div>
+            <div class="page-subtitle">Пользователи с ролью partner</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Партнёр</th><th>Телефон</th><th>Заказов</th>
+              <th>Всего комиссий</th><th>К выплате</th><th>Дата</th>
+            </tr></thead>
+            <tbody id="partners-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Partner Orders -->
+      <div class="page" id="page-partner-orders">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Партнёрские заказы</div>
+            <div class="page-subtitle">Заказы с партнёрской комиссией</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="loadPartnerOrders('all')">Все</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadPartnerOrders('unpaid')">К выплате</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadPartnerOrders('paid')">Выплачено</button>
+          </div>
+        </div>
+        <div id="partner-orders-kpi" class="kpi-grid" style="margin-bottom:20px"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Заказ</th><th>Партнёр</th><th>Бюджет</th>
+              <th>Комиссия партнёра</th><th>Наш доход</th><th>Статус</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="partner-orders-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Barter -->
+      <div class="page" id="page-barter">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Бартер-заказы</div>
+            <div class="page-subtitle">Заказы без денежного расчёта</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Заказ</th><th>Клиент предлагает</th><th>Мастер хочет</th>
+              <th>Комиссия мастера</th><th>Статус</th><th>Дата</th>
+            </tr></thead>
+            <tbody id="barter-table"></tbody>
+          </table>
         </div>
       </div>
 
@@ -906,6 +982,148 @@
   document.getElementById('auth-otp')?.addEventListener('keypress', e => {
     if (e.key === 'Enter') handleAuth()
   })
+
+  // ── Partners ───────────────────────────────────────────────────────────────
+
+  async function loadPartners() {
+    document.getElementById('partners-table').innerHTML = loadingRow(6)
+    try {
+      const data = await api('/users?role=partner&page=1&limit=50')
+      const partners = data.data ?? []
+
+      // Для каждого партнёра грузим статистику заказов
+      document.getElementById('partners-table').innerHTML = partners.length
+        ? partners.map(p => `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar">${(p.name?.[0]??'?').toUpperCase()}</div>
+                <div>
+                  <div style="font-weight:600">${p.name ?? '—'}</div>
+                  <div style="color:var(--muted);font-size:10px">${p.city ?? ''}</div>
+                </div>
+              </div>
+            </td>
+            <td style="color:var(--muted)">${p.phone}</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td style="color:var(--muted)">${new Date(p.createdAt).toLocaleDateString('ru')}</td>
+          </tr>
+        `).join('')
+        : '<tr><td colspan="6" class="empty">Нет партнёров</td></tr>'
+    } catch(e) {
+      document.getElementById('partners-table').innerHTML = '<tr><td colspan="6" class="empty">Ошибка загрузки</td></tr>'
+    }
+  }
+
+  // ── Partner Orders ─────────────────────────────────────────────────────────
+
+  async function loadPartnerOrders(filter = 'all') {
+    document.getElementById('partner-orders-table').innerHTML = loadingRow(7)
+    try {
+      const data = await api(`/orders?page=1&limit=100`)
+      let orders = (data.data ?? []).filter(o => o.partnerId)
+
+      if (filter === 'unpaid') orders = orders.filter(o => !o.partnerPaid && o.status === 'completed')
+      if (filter === 'paid')   orders = orders.filter(o => o.partnerPaid)
+
+      // KPI
+      const totalPlatformIncome = orders
+        .filter(o => o.partnerCommissionAmount)
+        .reduce((s, o) => s + (o.platformCutAmount ?? 0), 0)
+      const totalPending = orders
+        .filter(o => !o.partnerPaid && o.status === 'completed')
+        .reduce((s, o) => s + ((o.partnerCommissionAmount ?? 0) - (o.platformCutAmount ?? 0)), 0)
+
+      document.getElementById('partner-orders-kpi').innerHTML = `
+        <div class="kpi-card orange"><div class="kpi-label">Партнёрских заказов</div><div class="kpi-value orange">${orders.length}</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Наш доход с комиссий</div><div class="kpi-value green">${totalPlatformIncome.toLocaleString()} ₸</div></div>
+        <div class="kpi-card blue"><div class="kpi-label">Ожидает выплаты партнёрам</div><div class="kpi-value blue">${totalPending.toLocaleString()} ₸</div></div>
+      `
+
+      document.getElementById('partner-orders-table').innerHTML = orders.length
+        ? orders.map(o => {
+          const budget        = o.budgetFrom ?? 0
+          const pct           = o.partnerCommissionPercent ?? 0
+          const partnerEarns  = Math.floor(budget * pct / 100)
+          const platformCut   = Math.floor(partnerEarns * 0.1)
+          const partnerNet    = partnerEarns - platformCut
+          const canPay        = !o.partnerPaid && o.status === 'completed' && partnerNet > 0
+
+          return `
+            <tr>
+              <td>
+                <div style="font-weight:600;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.title}</div>
+                <div style="color:var(--muted);font-size:10px">${o.partnerClientName ?? ''} ${o.partnerClientPhone ?? ''}</div>
+              </td>
+              <td style="color:var(--muted)">${o.partnerId?.slice(0,8) ?? '—'}...</td>
+              <td style="font-weight:600">${budget.toLocaleString()} ₸</td>
+              <td>
+                <span style="color:#FF6B35;font-weight:700">${partnerNet.toLocaleString()} ₸</span>
+                <span style="color:var(--muted);font-size:10px"> (${pct}%)</span>
+              </td>
+              <td style="color:#22c55e;font-weight:700">${platformCut.toLocaleString()} ₸</td>
+              <td>
+                ${o.partnerPaid
+            ? '<span class="status success">Выплачено</span>'
+            : o.status === 'completed'
+              ? '<span class="status warning">К выплате</span>'
+              : `<span class="status">${o.status}</span>`
+          }
+              </td>
+              <td>
+                ${canPay ? `<button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="markPartnerPaid('${o.id}')">✓ Выплатить</button>` : '—'}
+              </td>
+            </tr>
+          `}).join('')
+        : '<tr><td colspan="7" class="empty">Нет заказов</td></tr>'
+    } catch(e) {
+      document.getElementById('partner-orders-table').innerHTML = '<tr><td colspan="7" class="empty">Ошибка загрузки</td></tr>'
+    }
+  }
+
+  async function markPartnerPaid(orderId) {
+    try {
+      await api(`/orders/${orderId}/partner-paid`, { method: 'PATCH' })
+      showToast('Комиссия помечена как выплаченная', 'success')
+      loadPartnerOrders()
+    } catch(e) {
+      showToast('Ошибка: ' + e.message, 'error')
+    }
+  }
+
+  // ── Barter ─────────────────────────────────────────────────────────────────
+
+  async function loadBarter() {
+    document.getElementById('barter-table').innerHTML = loadingRow(6)
+    try {
+      const data = await api('/orders?page=1&limit=100')
+      const barters = (data.data ?? []).filter(o => o.type === 'barter')
+
+      document.getElementById('barter-table').innerHTML = barters.length
+        ? barters.map(o => `
+          <tr>
+            <td>
+              <div style="font-weight:600">${o.title}</div>
+              <div style="color:var(--muted);font-size:10px">${o.city ?? ''}</div>
+            </td>
+            <td style="max-width:180px;font-size:12px;color:var(--text)">${o.barterClientOffer ?? '—'}</td>
+            <td style="max-width:180px;font-size:12px;color:var(--text)">${o.barterSpecialistWant ?? '<span style="color:var(--muted)">Ожидает отклика</span>'}</td>
+            <td style="color:#8B5CF6;font-weight:700">${o.barterPlatformFee ? o.barterPlatformFee.toLocaleString() + ' ₸' : '—'}</td>
+            <td><span class="status ${o.status === 'completed' ? 'success' : ''}">${o.status}</span></td>
+            <td style="color:var(--muted)">${new Date(o.createdAt).toLocaleDateString('ru')}</td>
+          </tr>
+        `).join('')
+        : '<tr><td colspan="6" class="empty">Нет бартер-заказов</td></tr>'
+    } catch(e) {
+      document.getElementById('barter-table').innerHTML = '<tr><td colspan="6" class="empty">Ошибка загрузки</td></tr>'
+    }
+  }
+
+  function loadingRow(cols) {
+    return `<tr><td colspan="${cols}" style="text-align:center;padding:32px"><div class="loader" style="justify-content:center"><span></span><span></span><span></span></div></td></tr>`
+  }
 </script>
 </body>
 </html>

@@ -5,7 +5,7 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto, CreateResponseDto } from './dto';
+import { CreateOrderDto, CreateResponseDto, UpdateBarterResponseDto } from './dto';
 import { OrderStatus } from './entities/order.entity';
 
 @ApiTags('Orders')
@@ -23,6 +23,7 @@ export class OrdersController {
   @ApiQuery({ name: 'categoryId', required: false })
   @ApiQuery({ name: 'city',       required: false })
   @ApiQuery({ name: 'status',     required: false })
+  @ApiQuery({ name: 'type',       required: false })
   @ApiQuery({ name: 'page',       required: false })
   @ApiQuery({ name: 'limit',      required: false })
   findAll(@Req() req: any, @Query() query: any) {
@@ -32,6 +33,7 @@ export class OrdersController {
         categoryId: query.categoryId,
         city:       query.city,
         status:     query.status,
+        type:       query.type,
         page:       parseInt(query.page  ?? '1',  10),
         limit:      parseInt(query.limit ?? '20', 10),
       },
@@ -42,14 +44,12 @@ export class OrdersController {
   @Get('my')
   @ApiOperation({ summary: 'Мои заказы (клиент)' })
   getMyOrders(@Req() req: any, @Query() query: any) {
-    return this.ordersService.findAll(
-      {
-        clientId: req.user.id,
-        status:   query.status,
-        page:     parseInt(query.page  ?? '1',  10),
-        limit:    parseInt(query.limit ?? '20', 10),
-      },
-    );
+    return this.ordersService.findAll({
+      clientId: req.user.id,
+      status:   query.status,
+      page:     parseInt(query.page  ?? '1',  10),
+      limit:    parseInt(query.limit ?? '20', 10),
+    });
   }
 
   @Get('nearby')
@@ -65,6 +65,22 @@ export class OrdersController {
       parseFloat(query.radius ?? '10'),
       parseInt(query.limit   ?? '5', 10),
     );
+  }
+
+  @Get('partner/my')
+  @ApiOperation({ summary: 'Заказы партнёра' })
+  getPartnerOrders(@Req() req: any, @Query() query: any) {
+    return this.ordersService.getPartnerOrders(
+      req.user.id,
+      parseInt(query.page  ?? '1',  10),
+      parseInt(query.limit ?? '20', 10),
+    );
+  }
+
+  @Get('responses/my')
+  @ApiOperation({ summary: 'Мои отклики (специалист)' })
+  getMyResponses(@Req() req: any) {
+    return this.ordersService.getMyResponses(req.user.id);
   }
 
   @Get(':id')
@@ -87,6 +103,12 @@ export class OrdersController {
     @Body('status') status: OrderStatus,
   ) {
     return this.ordersService.updateStatus(id, req.user.id, status);
+  }
+
+  @Patch(':id/partner-paid')
+  @ApiOperation({ summary: 'Пометить комиссию партнёра как выплаченную (admin)' })
+  markPartnerPaid(@Param('id') id: string) {
+    return this.ordersService.markPartnerPaid(id);
   }
 
   @Delete(':id')
@@ -116,9 +138,13 @@ export class OrdersController {
     return this.ordersService.acceptResponse(responseId, req.user.id);
   }
 
-  @Get('responses/my')
-  @ApiOperation({ summary: 'Мои отклики (специалист)' })
-  getMyResponses(@Req() req: any) {
-    return this.ordersService.getMyResponses(req.user.id);
+  @Patch('responses/:responseId/barter')
+  @ApiOperation({ summary: 'Специалист заполняет условия бартера' })
+  updateBarterResponse(
+    @Req() req: any,
+    @Param('responseId') responseId: string,
+    @Body() dto: UpdateBarterResponseDto,
+  ) {
+    return this.ordersService.updateBarterResponse(responseId, req.user.id, dto);
   }
 }
