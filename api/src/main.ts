@@ -4,7 +4,6 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import * as compression from 'compression';
-import { join } from 'path';
 import * as fs from 'fs';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -24,6 +23,12 @@ async function bootstrap() {
     origin:      [...origins, /localhost/, 'https://master.it-trend.dev'],
     credentials: true,
     methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
+
+  app.enableCors({
+    origin: [...origins, /localhost/, /it-trend\.dev$/],  // ← все поддомены it-trend.dev
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   // ── Global prefix ─────────────────────────────────────────
