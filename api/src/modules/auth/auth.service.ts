@@ -150,7 +150,11 @@ export class AuthService {
   // ── Logout ─────────────────────────────────────────────────
 
   async logout(userId: string): Promise<void> {
-    await this.userRepo.update(userId, { refreshToken: '' });
+    await this.userRepo.update(userId, {
+      refreshToken: '',
+      pushToken: null,           // Expo push token
+      webPushSubscription: null, // Web push subscription
+    } as any)
   }
 
   // ── Me ─────────────────────────────────────────────────────
