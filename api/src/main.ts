@@ -18,18 +18,21 @@ async function bootstrap() {
   app.use(compression());
 
   // ── CORS ─────────────────────────────────────────────────
-  const origins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',');
+  const origins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',').map(s => s.trim())
   app.enableCors({
-    origin:      [...origins, /localhost/, 'https://master.it-trend.dev'],
-    credentials: true,
-    methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  });
-
-  app.enableCors({
-    origin: [...origins, /localhost/, /it-trend\.dev$/],  // ← все поддомены it-trend.dev
+    origin: (origin, callback) => {
+      // Разрешаем без origin (мобильные приложения, curl)
+      if (!origin) return callback(null, true)
+      // Проверяем список и поддомены it-trend.dev
+      if (origins.includes(origin) || /https?:\/\/.*\.it-trend\.dev$/.test(origin)) {
+        return callback(null, true)
+      }
+      return callback(new Error(`CORS blocked: ${origin}`))
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  });
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+  })
 
   // ── Global prefix ─────────────────────────────────────────
   const version = process.env.API_VERSION ?? 'v1';
