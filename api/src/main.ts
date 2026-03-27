@@ -21,9 +21,7 @@ async function bootstrap() {
   const origins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',').map(s => s.trim())
   app.enableCors({
     origin: (origin, callback) => {
-      // Разрешаем без origin (мобильные приложения, curl)
       if (!origin) return callback(null, true)
-      // Проверяем список и поддомены it-trend.dev
       if (origins.includes(origin) || /https?:\/\/.*\.it-trend\.dev$/.test(origin)) {
         return callback(null, true)
       }
@@ -31,7 +29,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'X-App-Version'],
   })
 
   // ── Global prefix ─────────────────────────────────────────
